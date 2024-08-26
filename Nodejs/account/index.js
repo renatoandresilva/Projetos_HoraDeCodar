@@ -26,8 +26,10 @@ function operation() {
         deposit();
         break;
       case 'Consultar saldo':
+        getAccountBalance();
         break;
       case 'Sacar': 
+        Withdraw();
         break;
       default:
         console.log(chalk.bgBlue.black('Obrigado por usar o account!'))
@@ -102,8 +104,57 @@ function deposit() {
 
   }).catch(err => console.log(chalk.bgRed.black(err)));
 }
+// Show account balance
+function getAccountBalance() {
+  inquirer.prompt([{
+    name: 'accountName',
+    message: 'Qual o nome da sua conta?'
+  }])
+  .then(res => {
+    const accountName = res['accountName'];
 
-const checkAccount = (accountName) => {
+    if (!checkAccount(accountName)) {
+      return getAccountBalance();
+    }
+
+    const accountData = getAccount(accountName);
+
+    console.log(chalk.green(
+      `Saldo disponível: ${accountData.Balance}`
+    ));
+
+    operation();
+  }).catch(err => console.log(err));
+}
+
+// Take money from user account
+function Withdraw() {
+  inquirer.prompt([{
+    name: 'accountName',
+    message: 'Qual o nome da sua conta?'
+  }])
+  .then(res => {
+    const accountName = res['accountName'];
+
+    if (!checkAccount(accountName)) {
+      return Withdraw();
+    }
+
+    inquirer.prompt([{
+      name: 'amount',
+      message: 'Qual valor deseja retirar?'
+    }])
+    .then(res => {
+      const amount = res['amount'];
+
+      removeAmount(accountName, amount);
+    }).catch(err => console.log(err))
+
+  }).catch(err => console.log(err))
+}
+
+//Functions 
+const checkAccount = (accountName) => { 
   if(!fs.existsSync(`accounts/${accountName}.json`)) {
     console.log(chalk.bgRed.black('Conta inexisnte. Tente outra vez.'));
     return false;
@@ -138,3 +189,25 @@ const getAccount = (accountName) => {
   return JSON.parse(accountJSON);
 };
 
+const removeAmount = (accountName, amount) => {
+  const accountData = getAccount(accountName);
+  
+  if (!amount) {
+    console.log(chalk.bgRedBright.black('Ocorreu um error tente novamento mais tarde.'));
+    return Withdraw();
+  }
+
+  if (accountData < amount) {
+    console.log(chalk.bgRedBright.black('Saldo insuficiente.'));
+    return Withdraw();
+  }
+
+  accountData.Balance = parseFloat(accountData.Balance) - parseFloat(amount);
+ 
+  fs.writeFileSync(`accounts/${accountName}.json`, JSON.stringify(accountData), function(err) {
+    console.log(err); 
+  })
+
+  console.log(chalk.bgGreen.black(`Saque no valor de R$${amount} realizado com sucesso.`));
+  operation();
+}; 
